@@ -103,6 +103,19 @@ public class KtClassVOidVisitor extends KtTreeVisitor<PUml> implements MyVisitor
             }
         }
 
+        if (ktClass.getPrimaryConstructor() != null) {
+            for (KtParameter parameter : ktClass.getPrimaryConstructor().getValueParameters()) {
+                if (parameter.hasValOrVar()) {
+                    parsePropertyRelation(parameter, parameter.getTypeReference(), pUmlClass, pUmlView, importMap);
+                }
+            }
+        }
+        for (KtDeclaration declaration : ktClass.getDeclarations()) {
+            if (declaration instanceof KtProperty) {
+                parsePropertyRelation(declaration, ((KtProperty) declaration).getTypeReference(), pUmlClass, pUmlView, importMap);
+            }
+        }
+
         List<KtSuperTypeListEntry> superClassEntries = ktClass.getSuperTypeListEntries();
         for (KtSuperTypeListEntry superClassEntry : superClassEntries) {
             if (superClassEntry != null) {
@@ -195,6 +208,49 @@ public class KtClassVOidVisitor extends KtTreeVisitor<PUml> implements MyVisitor
             }
         }
         return null;
+    }
+
+    private void parsePropertyRelation(KtModifierListOwner property, KtTypeReference typeReference, PUmlClass pUmlClass, PUmlView pUmlView, Map<String, String> importMap) {
+        if (!parserConfig.isFieldModifier(VisibilityUtils.toVisibility(property))) {
+            return;
+        }
+        addPropertyRelation(typeReference, "*-->", pUmlClass, pUmlView, importMap);
+    }
+
+    private void addPropertyRelation(KtTypeReference typeReference, String relation, PUmlClass pUmlClass, PUmlView pUmlView, Map<String, String> importMap) {
+        if (typeReference == null) {
+            return;
+        }
+        KtTypeElement typeElement = typeReference.getTypeElement();
+        if (typeElement instanceof KtNullableType) {
+            typeElement = ((KtNullableType) typeElement).getInnerType();
+        }
+        if (!(typeElement instanceof KtUserType)) {
+            return;
+        }
+        KtUserType userType = (KtUserType) typeElement;
+        for (KtTypeProjection typeArgument : userType.getTypeArguments()) {
+            addPropertyRelation(typeArgument.getTypeReference(), "o-->", pUmlClass, pUmlView, importMap);
+        }
+
+        String typeName = userType.getReferencedName();
+        String target;
+        if (userType.getQualifier() != null) {
+            target = userType.getQualifier().getText() + "." + typeName;
+        } else if (importMap.containsKey(typeName)) {
+            target = importMap.get(typeName);
+        } else {
+            target = getPackageNamePrefix(pUmlClass.getPackageName()) + typeName;
+        }
+        if (!parserConfig.isShowPackage()) {
+            target = target.substring(target.lastIndexOf(".") + 1);
+        }
+
+        PUmlRelation pUmlRelation = new PUmlRelation();
+        pUmlRelation.setSource(getPackageNamePrefix(pUmlClass.getPackageName()) + pUmlClass.getClassName());
+        pUmlRelation.setTarget(target);
+        pUmlRelation.setRelation(relation);
+        pUmlView.addPUmlFieldRelation(pUmlRelation);
     }
 
     private String getKtTypeReference(KtTypeReference reference, String defaultValue) {
