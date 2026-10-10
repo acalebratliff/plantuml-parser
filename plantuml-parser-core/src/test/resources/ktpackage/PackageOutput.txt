@@ -1,5 +1,5 @@
 @startuml
-interface repository.Repository {
+class repository.MemoryRepository {
 + String find(String)
 }
 
@@ -10,7 +10,7 @@ class controller.Controller {
 }
 
 
-class repository.MemoryRepository {
+interface repository.Repository {
 + String find(String)
 }
 
@@ -20,11 +20,15 @@ class service.Service {
 }
 
 
+class repository.Store {
++ List<Repository> items
+}
+
 
 
 repository.Repository <|.. repository.MemoryRepository
-service.Service *--> repository.Repository
 controller.Controller *--> service.Service
 controller.Controller o--> service.Service
 controller.Controller *--> repository.MemoryRepository
+service.Service *--> repository.Repository
 @enduml

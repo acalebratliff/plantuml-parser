@@ -1,5 +1,5 @@
 @startuml
-interface repository.Repository {
+class repository.MemoryRepository {
 + String find(String)
 }
 
@@ -10,12 +10,16 @@ class controller.Controller {
 }
 
 
-class repository.MemoryRepository {
+interface repository.Repository {
 + String find(String)
 }
 
 class service.Service {
 + String run(String)
+}
+
+class repository.Store {
++ List<Repository> items
 }
 
 
